@@ -1,6 +1,6 @@
 #####################
-#EEE419 HW4         #
-#Caitlyn Blythe     #
+#EEE419 HW4
+#Caitlyn Blythe
 #####################
 
 #importing tkinter and matplotlib
@@ -32,31 +32,46 @@ def calc_wealth(entries):    #function to calculate wealth given user inputs fro
     retire = int(entries[INP_RETIRE].get())      #assigning the # of years in retirement input to variable retire
     annual = float(entries[INP_ANNUAL].get())    #assigning the annual spend in retirement input to variable annual
     noise = (stddev/100)*np.random.randn(MAX_YEARS)    #array of 70 random values, calculates volatility using stddev
-    wealth = [yearly]    #assigns the value of yearly to variable wealth as a matrix, so we can append values later on
 
-    for i in range(0,10):    #run analysis 10 times
-        for year in range(0,MAX_YEARS):
-            if wealth[year] <= 0:    #if value of wealth in current year goes to or below zero:
-                wealth.append(0)     #value appended will be zero
-            else:
-                if year < yrcont:    #if current year is less than # of years contributed
-                    wealth.append(wealth[year]*(1+(mnrtrn/100)+noise[year])+yearly)
-                elif year < retire:  #else if current year is less than the # of years in retirement
-                    wealth.append(wealth[year]*(1+(mnrtrn/100)+noise[year]))
-                else:    #all other cases
-                    wealth.append(wealth[year]*(1+(mnrtrn/100)+noise[year])-annual)
-        i += 1
-    avg_wealth = sum(wealth)/10    #calculating average wealth over the 10 analyses done
-    return avg_wealth
+    wealth = [yearly]    #initialize wealth as a matrix, with first entry being the first yearly contribution
+    for year in range(1,MAX_YEARS):
+        if year < yrcont:    #from start until end of contributions
+            wealth.append(wealth[year-1]*(1+(mnrtrn/100)+noise[year-1])+yearly)
+        elif year < retire + yrcont:    #end of contributions until retiring
+            wealth.append(wealth[year-1]*(1+(mnrtrn/100)+noise[year-1]))
+        else:    #from retirement until the end of 70 years
+            wealth.append(wealth[year-1]*(1+(mnrtrn/100)+noise[year-1])-annual)
+            if wealth[year] < 0:    #won't show negative balance
+                wealth[year] = 0
+    return wealth, wealth[retire-1]    #returns wealth as a matrix, as well as specific value for wealth at retirement
+
+#####################
+#simulating 10 times to find average
+def calc_avgs(entries):
+    wealthx10 = []    #initializing a matrix to hold 10 simulations worth of calculations
+    tot_retwealth = 0    #initializing variable to hold summed wealth values at retirement
+    for i in range(10):    #run 10 times
+        wealthvals, ret_wealth = calc_wealth(entries)    #stores returned wealth/wealth at retirement
+        wealthx10.append(wealthvals)    #append the wealth values from all 10 sims into wealthx10
+        tot_retwealth += ret_wealth    #storing summed wealth values at retirement
+        wealthvals = np.trim_zeros(wealthvals,'b')    #gets rid of any 0 values in matrix so they are not plotted
+        plt.plot(range(MAX_YEARS),wealthvals)    #plot wealth over 70 years
+    #plot stuff here
+    plt.title("Wealth over 70 years")
+    plt.xlabel("Years")
+    plt.ylabel("Wealth")
+    plt.show(block=False)
+
+    avg_retwealth = tot_retwealth/10    #averaging wealth at retirement
+    lab2.config(text=f"Wealth at retirement: {avg_retwealth:,.2f}")    #label updates when avg_retwealth changes
 
 #####################
 #make the gui
 def make_gui(root):
-    entries = []
-    for index in range(NUM_INPUTS):
+    entries = []    #make a place for entries to go
+    for index in range(NUM_INPUTS):    #take entries
         row = Frame(root)
         lab = Label(row, width=22, text=INPUTS[index]+": ", anchor='w')
-
         ent = Entry(row)
         ent.insert(0,"0")
         row.pack(side=TOP, fill=X, padx=5, pady=5)
@@ -64,16 +79,15 @@ def make_gui(root):
         ent.pack(side=RIGHT, expand=YES, fill=X)
         entries.append(ent)
     return entries
-
+#gui buttons/labels
 root = Tk()
 ents = make_gui(root)
-avgwealth = calc_wealth(ents)
-lab2 = Label(root, width=22, text="Wealth at retirement: %f" %float(avgwealth))
+
+lab2 = Label(root, text="")
 lab2.pack(side=TOP, anchor=W)
 b1 = Button(root, text="Quit", command=root.destroy)
 b1.pack(side=LEFT, padx=5, pady=5)
-b2 = Button(root, text="Calculate", command=(lambda: calc_wealth(ents)))
+b2 = Button(root, text="Calculate", command=(lambda: calc_avgs(ents)))
 b2.pack(side=RIGHT, padx=5, pady=5)
 
 root.mainloop()
-
